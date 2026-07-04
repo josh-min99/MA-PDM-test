@@ -1,0 +1,54 @@
+# 스모크 테스트 전용 config. 원본 ped2.yml에서 파생.
+# 목적: "코드가 에러 없이 몇 스텝 도는가"만 확인. 이상탐지 성능과 무관.
+# 원본 대비 바뀐 점: data_dir(입력/체크포인트 경로), image_size(128로 축소→패치 4개),
+#                    batch_size(2), num_workers(2). 나머지는 ped2.yml과 동일.
+data:
+    dataset: "ped2"
+    image_size: 128        # 원본 256. 128이면 패치 (128/64)^2 = 4개 → 메모리/연산 대폭 감소
+    patch_size: 64
+    channels: 3
+    num_workers: 2         # 원본 8
+    data_dir: "data"       # 입력 루트이자 체크포인트 루트. repo_root/data 를 가리킴
+    conditional: True
+    time_step: 6
+logger:
+    logdir: 'logs/ped2_smoke/loss'
+model:
+    in_channels: 18
+    out_ch: 3
+    ch: 64
+    ch_mult: [1, 2, 2, 4]
+    m_size: 8
+    num_res_blocks: 1
+    attn_resolutions: [16]
+    dropout: 0.0
+    ema_rate: 0.999
+    ema: True
+    resamp_with_conv: False
+
+diffusion:
+    beta_schedule: linear
+    beta_start: 0.0001
+    beta_end: 0.02
+    num_diffusion_timesteps: 1000
+
+training:
+    patch_n: 16
+    batch_size: 2          # 원본 18. 스모크는 작게
+    n_epochs: 1000
+    n_iters: 2000000
+    snapshot_freq: 10000
+    image_sample_freq: 1000
+
+sampling:
+    batch_size: 16
+    last_only: True
+    num_diffusion_timesteps: 1000
+    resume: 'ckpts/ped2.pth'
+
+optim:
+    weight_decay: 0.0
+    optimizer: "Adam"
+    lr: 0.0002
+    amsgrad: False
+    eps: 0.00000001

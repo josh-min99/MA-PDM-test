@@ -1,0 +1,8 @@
+# 생성물 (git에 올리지 않음)
+data/
+logs/
+ckpts/
+results/
+*.pth
+__pycache__/
+*.pyc

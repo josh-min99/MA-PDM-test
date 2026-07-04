@@ -1,0 +1,11 @@
+# MA-PDM 의존성 (저장소 전체 import문 스캔 기반)
+# torch / torchvision 은 vast.ai PyTorch 템플릿에 이미 설치되어 있으므로 여기서 제외.
+# (직접 설치가 필요하면 pytorch.org에서 CUDA 버전에 맞는 명령으로 별도 설치)
+opencv-python
+pyyaml
+tensorboardX
+tqdm
+ipdb
+matplotlib
+scikit-learn
+pillow
