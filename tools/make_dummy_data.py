@@ -24,10 +24,14 @@ import cv2
 
 def make_video(frames_dir, num_frames, h, w):
     os.makedirs(frames_dir, exist_ok=True)
+    # 파일명은 반드시 zero-padding 해야 한다.
+    # addata.py는 frame 리스트를 문자열 .sort()로 정렬한 뒤 "파일명 숫자 == 리스트 인덱스"로 가정한다.
+    # 패딩이 없으면 "10.jpg"가 "2.jpg"보다 앞에 정렬되어 인덱스가 어긋나고 IndexError가 난다.
+    width = max(4, len(str(num_frames - 1)))
     for k in range(num_frames):
         # 0~255 랜덤 노이즈. cv2는 BGR 순서로 저장하지만 더미라 무관.
         img = np.random.randint(0, 256, size=(h, w, 3), dtype=np.uint8)
-        cv2.imwrite(os.path.join(frames_dir, f"{k}.jpg"), img)
+        cv2.imwrite(os.path.join(frames_dir, f"{k:0{width}d}.jpg"), img)
 
 
 def main():
