@@ -117,17 +117,19 @@ def main():
     time_step = config.data.time_step
     resolutions = [int(s) for s in cli.resolutions.split(",") if s.strip()]
 
-    model = build_model(cli, config)
-
     print(f"GPU: {torch.cuda.get_device_name(0)}")
     print(f"patch_size={config.data.patch_size}  grid_r(stride)={cli.grid_r}  "
           f"ddim_steps={cli.sampling_timesteps}  merge={cli.merge}  batch=1")
+    print("(메모리 뱅크가 해상도별 패치 그리드에 맞춰지도록 해상도마다 모델 재생성 · 랜덤 가중치로 연산시간만 측정)")
     print("-" * 68)
     print(f"{'imsize':>7} | {'#patch':>6} | {'latency(ms)':>11} | {'FPS':>7}")
     print("-" * 68)
 
     rows = []
     for imsize in resolutions:
+        # 메모리 뱅크 슬롯 수 = (image_size//patch_size)^2 이므로 해상도마다 모델을 다시 세운다
+        config.data.image_size = imsize
+        model = build_model(cli, config)
         lat, fps, n_patch = bench_one(
             model, config, imsize, time_step,
             cli.iters, cli.warmup, cli.grid_r, cli.merge, device,

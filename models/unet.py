@@ -66,7 +66,9 @@ class Memory(nn.Module):
         :return: query output retrieved from memory, with the same size as x.
         """  
         
-        part_flag = (torch.round(p)[:,0]*4 + torch.round(p)[:,1]).long()
+        # 패치 그리드 열 개수 = sqrt(num_slots). 원래 하드코딩 4는 num_slots=16(=4x4, image_size 256)일 때와 동일.
+        cols = int(round(self.num_slots ** 0.5))
+        part_flag = (torch.round(p)[:,0]*cols + torch.round(p)[:,1]).long()
         match_part = self.memMatrix[part_flag]
        
         q = self.q(x)
@@ -427,7 +429,9 @@ class Encoder(nn.Module):
                 down.downsample = Downsample(block_in, resamp_with_conv)
                 curr_res = curr_res // 2
             self.down.append(down)
-        self.ap_mem = Memory(16, block_in, memory_size)
+        # 메모리 뱅크 슬롯 수 = 패치 그리드 크기². 원래 하드코딩 16은 image_size 256 / patch 64 = 4x4 일 때와 동일.
+        grid_n = config.data.image_size // config.data.patch_size
+        self.ap_mem = Memory(grid_n * grid_n, block_in, memory_size)
         self.mem_pool = nn.Sequential(
                 Normalize(block_in),
                 nn.SiLU(),
