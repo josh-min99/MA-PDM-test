@@ -78,8 +78,12 @@ class DiffusiveVAD:
                 x_input = x[:, self.config.data.time_step:, :, :]
                 x_dest = x[:, self.config.data.time_step:, :, :].to(self.diffusion.device)
                 
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
                 start = time.time()
                 x_output,closs,corners = self.diffusive_restoration(x_cond,x_dest, r=r, merge=merge_flag)
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
                 end = time.time()
                 cost_time= end-start + cost_time
                 if merge_flag=="False":
