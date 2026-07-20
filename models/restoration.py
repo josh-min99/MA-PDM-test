@@ -71,6 +71,11 @@ class DiffusiveVAD:
             rec_list[video_name] = []
 
         cost_time = 0
+        # 진단2: 픽셀별 오차 맵 저장 (env로 켬). ERRMAP_ONLY=쉼표목록이면 그 영상만.
+        _dump_err = bool(os.environ.get("ERRMAP_DUMP"))
+        _eo = os.environ.get("ERRMAP_ONLY")
+        _err_only = set(_eo.split(",")) if _eo else None
+        errmap_list = {}
         with torch.no_grad():
             for k,(x, video_names,c) in enumerate(tqdm((test_loader),desc="Testing Step")):  
                 b = x.shape[0]
@@ -103,19 +108,29 @@ class DiffusiveVAD:
                 else:
                     x_output = inverse_data_transform(x_output).cpu()
                     mse = (x_output-x_input).square()
+                    emap = mse.mean(dim=(1, 2))   # [b,H,W] 픽셀별 오차(채널·예측 평균)
                     mse_patch = [mse[:,:,:,x:x+p_size,y:y+p_size].mean(dim=(1, 2, 3, 4)).view(1,-1) for (x,y) in corners]
                     mse_patch = torch.cat(mse_patch).max(dim=0)[0]
                     mse = mse.mean(dim=(1, 2, 3, 4))
                     for i,video in enumerate(video_names):
-                        img_list[video].append(mse[i].cpu().detach().item()) 
-                        patch_list[video].append(mse_patch[i].cpu().detach().item()) 
-                        rec_list[video].append(closs[i].cpu().detach().item()) 
+                        img_list[video].append(mse[i].cpu().detach().item())
+                        patch_list[video].append(mse_patch[i].cpu().detach().item())
+                        rec_list[video].append(closs[i].cpu().detach().item())
+                        if _dump_err and (_err_only is None or video in _err_only):
+                            errmap_list.setdefault(video, []).append(
+                                emap[i].cpu().numpy().astype("float32"))
                     if k%100==0:
                         utils.logging.save_image(x_output[:,0], os.path.join(image_folder, f"output_{k}.png"))
                         utils.logging.save_image(x_input[:,0], os.path.join(image_folder, f"input_{k}.png"))
                         utils.logging.save_image(((x_input-x_output)*2)[:,0], os.path.join(image_folder, f"res_{k}.png"))
         print("cost:{}".format(cost_time))
         print("fps:{}".format(test_dataset.__len__()/cost_time))
+        if _dump_err and errmap_list:
+            _ed = os.path.join("results/images", self.config.data.dataset, "errmaps")
+            os.makedirs(_ed, exist_ok=True)
+            for _v, _maps in errmap_list.items():
+                np.save(os.path.join(_ed, _v + ".npy"), np.stack(_maps))
+            print(f"[errmap] saved {len(errmap_list)} videos -> {_ed}")
         anomaly_score_total_list = []
         anomaly_score_total_ = []
         sum=0
