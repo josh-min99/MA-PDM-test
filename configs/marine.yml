@@ -1,0 +1,54 @@
+data:
+    dataset: "marine"
+    image_size: 256
+    patch_size: 64
+    channels: 3
+    num_workers:  8
+    # data_dir = root. Code reads <data_dir>/marine/training(&testing)/frames,
+    # and saves ckpt to <data_dir>/ckpts/marine.pth (see notes 1-2). Set per environment.
+    # local: "C:/.../experiment/data/marine"   vast: "/workspace/data/marine"
+    data_dir: ""
+    conditional: True
+    time_step: 6
+logger:
+    logdir: 'logs/marine/loss'
+model:
+    in_channels: 18
+    out_ch: 3
+    ch: 64
+    ch_mult: [1, 2, 2, 4]
+    m_size: 8
+    num_res_blocks: 1
+    attn_resolutions: [16]
+    dropout: 0.0
+    ema_rate: 0.999
+    ema: True
+    resamp_with_conv: False
+
+diffusion:
+    beta_schedule: linear
+    beta_start: 0.0001
+    beta_end: 0.02
+    num_diffusion_timesteps: 1000
+
+training:
+    patch_n: 16
+    batch_size: 8            # RTX 3090 24GB: 256^2/18 OOM -> 8 (notes 5)
+    n_epochs: 250            # spot2(155 steps/epoch)*250 ~= 38k steps then auto-stop.
+                            # mixed run showed loss converges by ~15-20k, so this has margin.
+    n_iters: 2000000
+    snapshot_freq: 5000     # numbered ckpts every 5k for step-vs-AUC sweep (ddm.py patch)
+    image_sample_freq: 1000
+
+sampling:
+    batch_size: 16
+    last_only: True
+    num_diffusion_timesteps: 1000
+    resume: 'ckpts/marine.pth'
+
+optim:
+    weight_decay: 0.0
+    optimizer: "Adam"
+    lr: 0.0002
+    amsgrad: False
+    eps: 0.00000001

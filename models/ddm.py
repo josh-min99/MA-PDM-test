@@ -186,7 +186,7 @@ class DenoisingDiffusion(object):
                
 
                 if self.step % self.config.training.snapshot_freq == 0 or self.step == 1 :
-                    utils.logging.save_checkpoint({
+                    ckpt = {
                         'epoch': epoch + 1,
                         'step': self.step,
                         'state_dict': self.model.state_dict(),
@@ -194,7 +194,12 @@ class DenoisingDiffusion(object):
                         'ema_helper': self.ema_helper.state_dict(),
                         'params': self.args,
                         'config': self.config
-                    }, filename=os.path.join(self.config.data.data_dir, 'ckpts', self.config.data.dataset))
+                    }
+                    ckpt_root = os.path.join(self.config.data.data_dir, 'ckpts', self.config.data.dataset)
+                    # 최신(덮어씀) — resume/기본 eval 호환
+                    utils.logging.save_checkpoint(ckpt, filename=ckpt_root)
+                    # 스텝별(보존) — 스텝×AUC 비교용. 예: marine_10000.pth
+                    utils.logging.save_checkpoint(ckpt, filename=f"{ckpt_root}_{self.step}")
                 if self.step % self.config.training.image_sample_freq == 0 and self.step > 1 :
                     self.model.eval()
                     with torch.no_grad():
