@@ -17,7 +17,9 @@ def save_checkpoint(state, filename):
 
 
 def load_checkpoint(path, device):
+    # PyTorch>=2.6 defaults weights_only=True, which rejects the argparse.Namespace
+    # (config/params) stored in our own checkpoints. These are self-produced/trusted.
     if device is None:
-        return torch.load(path)
+        return torch.load(path, weights_only=False)
     else:
-        return torch.load(path, map_location=device)
+        return torch.load(path, map_location=device, weights_only=False)
