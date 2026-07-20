@@ -129,10 +129,58 @@ def main():
         p = micro_ap(scores, labels_list)
         print(f"{name:32} {a:9.4f} {p:8.4f}")
 
+    # ---- 영상별 라벨 분할 (raw 재현됨 → 정렬 정확) ----
+    per_video_labels, off = [], 0
+    for s in per_video:
+        per_video_labels.append(labels_list[off:off + len(s)])
+        off += len(s)
+
+    # ---- (A) test() macro 재현: 모든 영상 + sentinel([0],[1]) ----
+    macro_sentinel = []
+    for s, lab in zip(per_video, per_video_labels):
+        lbl2 = np.concatenate(([0], lab, [1]))
+        prd2 = np.concatenate(([0], s, [1]))
+        macro_sentinel.append(roc_auc_score(lbl2, prd2))
+    print(f"\n[A] test() MacroAUC 재현(모든영상+sentinel): {np.nanmean(macro_sentinel):.4f}"
+          f"  (원output 0.9927와 비교 → 일치하면 'macro는 sentinel 조작' 확인)")
+
+    # ---- (B) 정직한 per-video AUC: 혼합 영상만, sentinel 없음 ----
+    honest, n_both, n_pos, n_neg = [], 0, 0, 0
+    for s, lab in zip(per_video, per_video_labels):
+        u = set(int(x) for x in np.unique(lab))
+        if 0 in u and 1 in u:
+            n_both += 1
+            honest.append(roc_auc_score(lab, s))
+        elif u == {1}:
+            n_pos += 1
+        elif u == {0}:
+            n_neg += 1
+    print(f"\n[B] 정직한 per-video AUC (정상·군함 섞인 영상만, sentinel 없음)")
+    print(f"    혼합영상 {n_both}개 / 전부군함 {n_pos} / 전부정상 {n_neg}")
+    if honest:
+        h = np.array(honest)
+        print(f"    per-video AUC: mean {h.mean():.4f} / median {np.median(h):.4f} "
+              f"/ min {h.min():.4f} / max {h.max():.4f}")
+        print(f"    >0.7 인 영상 {int((h>0.7).sum())}/{len(h)} , <0.5 인 영상 {int((h<0.5).sum())}/{len(h)}")
+
+    # ---- (C) 혼합 영상 프레임만 모아 pooled AUC (raw / z_offline) ----
+    mix_raw, mix_z, mix_lab = [], [], []
+    for s, lab in zip(per_video, per_video_labels):
+        u = set(int(x) for x in np.unique(lab))
+        if 0 in u and 1 in u:
+            mix_raw.append(np.asarray(s, float))
+            mix_z.append(z_offline(s))
+            mix_lab.append(np.asarray(lab))
+    if mix_lab:
+        ml = np.concatenate(mix_lab)
+        print(f"\n[C] 혼합영상 프레임만 pooled ({len(ml)}프레임, 군함 {100*ml.mean():.0f}%)")
+        print(f"    raw MicroAUC      {roc_auc_score(ml, np.concatenate(mix_raw)):.4f}")
+        print(f"    z_offline MicroAUC {roc_auc_score(ml, np.concatenate(mix_z)):.4f}")
+
     print("\n해석:")
-    print(" - raw가 0.13 근처로 재현되면 오프라인 재현 성공.")
-    print(" - z_offline이 0.9 근처로 뛰면 → '기준선 차이가 원인' 증명.")
-    print(" - z_causal도 뛰면 스트리밍 가능, 안 뛰면 스트리밍 정규화가 연구문제.")
+    print(" - [A]가 0.99 재현 → macro는 sentinel 조작(무의미).")
+    print(" - [B]/[C]가 높으면(0.7+) → 같은 장면 안에선 군함 잡음 → 문제는 테스트설계 → spot2가 해결.")
+    print(" - [B]/[C]도 ~0.5면 → 진짜 못 잡음 → 크기(256²서 ~13×5px)·과적합 원인 → spot2로 안 풀림.")
 
 
 if __name__ == "__main__":
