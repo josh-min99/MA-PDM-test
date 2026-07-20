@@ -35,8 +35,9 @@ for f in "${CKS[@]}"; do
   step=$(basename "$f" .pth | sed "s/^${DS}_//")
   abs=$(readlink -f "$f")
   sed -i "s#resume: .*#resume: '$abs'#" "configs/$CFG"
-  auc=$(python eval_diffusion.py --config "$CFG" --grid_r 64 \
-          --sampling_timesteps "$STEPS" --merge False 2>/dev/null \
+  # AUC는 test_diffusion.py(-> restoration.test())가 계산. eval_diffusion.py는 영상 생성용(AUC 아님).
+  auc=$(python test_diffusion.py --config "$CFG" --grid_r 64 \
+          --sampling_timesteps "$STEPS" --merge True 2>/dev/null \
         | grep '^AUC:' | grep -oE '[0-9]+\.[0-9]+' | head -1)
   echo "  step $step -> AUC ${auc:-FAIL}"
   echo "$step,${auc:-}" >> "$OUT"
