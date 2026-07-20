@@ -34,10 +34,11 @@ diffusion:
 training:
     patch_n: 16
     batch_size: 8            # RTX 3090 24GB: 256^2/18 OOM -> 8 (notes 5)
-    n_epochs: 250            # spot2(155 steps/epoch)*250 ~= 38k steps then auto-stop.
-                            # mixed run showed loss converges by ~15-20k, so this has margin.
+    n_epochs: 1000          # run long, stop manually. numbered ckpts every snapshot_freq
+                            # are kept (ddm.py patch), so nothing is lost -> pick best by
+                            # tools/sweep_eval.sh. no auto-stop.
     n_iters: 2000000
-    snapshot_freq: 5000     # numbered ckpts every 5k for step-vs-AUC sweep (ddm.py patch)
+    snapshot_freq: 5000     # numbered ckpts every 5k for step-vs-AUC sweep + overfit check
     image_sample_freq: 1000
 
 sampling:
